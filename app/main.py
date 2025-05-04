@@ -47,6 +47,8 @@ def process_submission(producer, msg):
     problem_id = data.get('problem_id')
     test_cases = get_test_cases(os.getenv("PROBLEM_SERVICE_URL"), problem_id)
 
+    print("TEst cases:", test_cases)
+
     if language not in SUPPORTED_LANGUAGES:
         result_msg = {
             "submission_id": submission_id,
