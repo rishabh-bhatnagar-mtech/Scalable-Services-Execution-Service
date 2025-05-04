@@ -7,3 +7,4 @@ data:
   KAFKA_BROKERS: "kafka.kafka.svc.cluster.local:9092"
   SUBMISSION_TOPIC: "code-submissions"
   RESULT_TOPIC: "code-results"
+  PROBLEM_SERVICE_URL: "problem-service.problem-service.svc.cluster.local:8000"

@@ -4,9 +4,9 @@ import json
 import logging
 import os
 
+import requests
 from dotenv import load_dotenv
 from kafka import KafkaConsumer, KafkaProducer
-from kafka.consumer.subscription_state import ConsumerRebalanceListener
 
 from runner import run_code
 
@@ -26,47 +26,26 @@ logging.basicConfig(filename='app.log', level=logging.INFO, filemode='w',
 logger = logging.getLogger(__name__)
 
 
-class RebalanceListener(ConsumerRebalanceListener):
-    def __init__(self, consumer):
-        self.consumer = consumer
 
-    def on_partitions_revoked(self, revoked):
-        # You can commit offsets here if needed before rebalance
-        pass
-
-    def on_partitions_assigned(self, assigned):
-        print(f"Partitions assigned: {assigned}")
-        # Seek to beginning of each assigned partition to consume from start
-        for partition in assigned:
-            self.consumer.seek_to_beginning(partition)
+def get_test_cases(problem_service_url, problem_id: str | int):
+    def get_problem_by_id():
+        response = requests.get(problem_service_url + f"/problems/{problem_id}",
+                                headers={"Content-Type": "application/json"}, data=json.dumps({}))
+        response.raise_for_status()
+        return response.json()
+    problem = get_problem_by_id()
+    test_cases = problem.get('test_cases')
+    return test_cases
 
 
-consumer = KafkaConsumer(
-    SUBMISSION_TOPIC,
-    bootstrap_servers=KAFKA_BROKERS,
-    group_id='execution-service',
-    auto_offset_reset='earliest',  # fallback if no committed offsets
-    enable_auto_commit=True,
-    value_deserializer=lambda m: m.decode('utf-8'),
-    max_poll_interval_ms=5000,
-    max_poll_records=1
-)
-
-# Attach rebalance listener to seek to beginning on partition assignment
-consumer.subscribe([SUBMISSION_TOPIC], listener=RebalanceListener(consumer))
-
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKERS.split(","),
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
-
-
-def process_submission(msg):
+def process_submission(producer, msg):
     data = ast.literal_eval(msg.value)
     code = data['code']
     language = data.get('language')
     submission_id = data.get('submission_id')
-    test_cases = data.get('test_cases', [])
+    user_id = data.get('user_id')
+    problem_id = data.get('problem_id')
+    test_cases = get_test_cases(os.getenv("PROBLEM_SERVICE_URL"), problem_id)
 
     if language not in SUPPORTED_LANGUAGES:
         result_msg = {
@@ -101,10 +80,28 @@ def process_submission(msg):
 
 def main():
     print(f"Starting Execution Service and subscribing to {SUBMISSION_TOPIC}....", flush=True)
+    consumer = KafkaConsumer(
+        SUBMISSION_TOPIC,
+        bootstrap_servers=KAFKA_BROKERS,
+        group_id='execution-service',
+        auto_offset_reset='earliest',  # fallback if no committed offsets
+        enable_auto_commit=True,
+        value_deserializer=lambda m: m.decode('utf-8'),
+        max_poll_interval_ms=5000,
+        max_poll_records=1
+    )
+
+    consumer.subscribe([SUBMISSION_TOPIC])
+
+    producer = KafkaProducer(
+        bootstrap_servers=KAFKA_BROKERS.split(","),
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+
     print("Execution Service is running...")
     for msg in consumer:
         print(datetime.datetime.now(), "Received message....", flush=True)
-        process_submission(msg)
+        process_submission(producer, msg)
 
 
 if __name__ == "__main__":
