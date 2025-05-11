@@ -39,6 +39,7 @@ def get_test_cases(problem_service_url, problem_id: str | int):
 
 
 def process_submission(producer, msg):
+    print(datetime.datetime.now(), "Processing submission....", flush=True)
     data = ast.literal_eval(msg.value)
     code = data['code']
     language = data.get('language')
@@ -47,7 +48,8 @@ def process_submission(producer, msg):
     problem_id = data.get('problem_id')
     test_cases = get_test_cases(os.getenv("PROBLEM_SERVICE_URL"), problem_id)
 
-    print("TEst cases:", test_cases)
+    print("Test cases:", test_cases)
+    print(f"Processing submission {submission_id} for problem {problem_id} by user {user_id}....", flush=True)
 
     if language not in SUPPORTED_LANGUAGES:
         result_msg = {
