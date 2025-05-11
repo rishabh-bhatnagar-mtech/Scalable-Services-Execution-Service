@@ -1,7 +1,7 @@
 IMAGE_TAG=execution-service:0.0.2
 
 docker-build:
-	docker build -t $(IMAGE_TAG) -f deployments/Dockerfile .
+	docker build -t $(IMAGE_TAG) -f deployments/Dockerfile . --quiet
 
 deploy_k8s:
 	kubectl apply -f deployments/namespace.yaml
