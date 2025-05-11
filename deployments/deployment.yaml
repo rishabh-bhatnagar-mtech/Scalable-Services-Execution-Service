@@ -14,19 +14,27 @@ spec:
         app: execution-service
     spec:
       containers:
-      - name: execution-service
-        image: execution-service:0.0.2
-        envFrom:
-        - configMapRef:
-            name: execution-config
-        # The following limits are mandatory for any malicious code requests
-        resources:
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-          requests:
-            memory: "256Mi"
-            cpu: "200m"
-        securityContext:
-          runAsNonRoot: false
-          readOnlyRootFilesystem: false
+        - name: execution-service
+          image: execution-service:0.0.2
+          envFrom:
+            - configMapRef:
+                name: execution-config
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-socket
+          # The following limits are mandatory for any malicious code requests
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+          securityContext:
+            runAsNonRoot: false
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
